@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          String    @default("ADMIN")
+  createdAt     DateTime  @default(now())
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  icon        String?
+  description String?
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  creators    Creator[]
+}
+
+model Creator {
+  id            String           @id @default(cuid())
+  name          String
+  username      String           @unique
+  avatar        String?
+  cover         String?
+  bio           String?
+  categoryId    String?
+  category      Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  platforms     Json?
+  followerCount Int              @default(0)
+  views         Int              @default(0)
+  featured      Boolean          @default(false)
+  featuredOrder Int              @default(0)
+  verified      Boolean          @default(false)
+  isNew         Boolean          @default(false)
+  trending      Boolean          @default(false)
+  trendingOrder Int              @default(0)
+  adminScore    Int              @default(0)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  events        AnalyticsEvent[]
+}
+
+model Application {
+  id         String   @id @default(cuid())
+  name       String
+  username   String   @unique
+  category   String
+  bio        String?
+  platforms  Json?
+  links      Json?
+  image      String?
+  cover      String?
+  reason     String?
+  status     String   @default("PENDING")
+  createdAt  DateTime @default(now())
+  reviewedAt DateTime?
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  type        String   @default("info")
+  active      Boolean  @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  action    String
+  admin     String?
+  target    String?
+  createdAt DateTime @default(now())
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  type      String
+  value     String?
+  creatorId String?
+  creator   Creator? @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model SiteSetting {
+  id              Int      @id @default(1)
+  siteName        String   @default("Respect Land")
+  logo            String?
+  favicon         String?
+  description     String?
+  inviteLink      String?
+  socialLinks     Json?
+  footerText      String?
+  homeCtaTitle    String?
+  homeCtaSubtitle String?
+  themeAccent     String?
+  maintenanceMode Boolean  @default(false)
+  newBadgeDays    Int      @default(30)
+  creatorOfWeekId String?
+  trendingLimit   Int      @default(8)
+  updatedAt       DateTime @updatedAt
+}
