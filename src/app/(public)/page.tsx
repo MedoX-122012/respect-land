@@ -7,6 +7,8 @@ import { NewCreators } from "@/components/sections/new-creators";
 import { LeaderboardPreview } from "@/components/sections/leaderboard-preview";
 import { CommunityCTA } from "@/components/sections/community-cta";
 
+export const dynamic = "force-dynamic";
+
 export default function HomePage() {
   return (
     <>

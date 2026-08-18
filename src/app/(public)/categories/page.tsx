@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { CategoriesGrid } from "@/components/categories-grid";
 import { getSiteSettings } from "@/lib/queries";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings().catch(() => null);
   return {

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { RecentlyViewedList } from "@/components/recently-viewed-list";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "شاهدتهم مؤخرًا",
   description: "الملفات الشخصية التي زرتها مؤخرًا.",

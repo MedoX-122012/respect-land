@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { getCategories, getSiteSettings } from "@/lib/queries";
 import { CreatorDirectory } from "@/components/creator-directory";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings().catch(() => null);
   return {

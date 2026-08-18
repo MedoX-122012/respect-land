@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Compass, Heart, Users, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "عن Respect Land",
   description: "تعرف على Respect Land ورسالتنا تجاه صناع المحتوى.",

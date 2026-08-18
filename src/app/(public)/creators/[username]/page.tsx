@@ -23,6 +23,8 @@ import { formatFullNumber } from "@/lib/utils";
 import { RecentlyViewed } from "@/components/recently-viewed";
 import type { CreatorWithCategory } from "@/lib/queries";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({
   params,
 }: {

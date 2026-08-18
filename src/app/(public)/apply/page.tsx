@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { getCategories } from "@/lib/queries";
 import { ApplyForm } from "@/components/apply-form";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "انضم كصانع محتوى",
   description:

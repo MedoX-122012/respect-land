@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { FavoritesList } from "@/components/favorites-list";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "المفضلة",
   description: "صانعو المحتوى الذين حفظتهم في قائمة المفضلة.",

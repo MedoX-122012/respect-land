@@ -12,6 +12,8 @@ import { Suspense } from "react";
 import { Users } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({
   params,
 }: {
