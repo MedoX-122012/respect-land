@@ -30,7 +30,7 @@ admin@respect.land / admin123
 ```bash
 npm install
 npx prisma db push
-npm run db:seed   # بيانات تجريبية
+npm run db:seed   # التصنيفات + حساب الأدمن
 npm run dev
 ```
 
