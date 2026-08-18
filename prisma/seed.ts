@@ -49,9 +49,9 @@ async function main() {
       footerText: "صُنع بأيادي عربية 🇪🇬",
       homeCtaTitle: "انضم إلى المجتمع",
       homeCtaSubtitle: "كن جزءًا من Respect Land وشارك تجربتك مع أفضل صناع المحتوى.",
-      inviteLink: "https://discord.gg/respectland",
+      inviteLink: "https://discord.gg/S4773cgeCB",
       socialLinks: {
-        discord: "https://discord.gg/respectland",
+        discord: "https://discord.gg/S4773cgeCB",
         x: "https://x.com/respectland",
         instagram: "https://instagram.com/respectland",
         tiktok: "https://tiktok.com/@respectland",
