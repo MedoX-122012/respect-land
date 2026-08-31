@@ -13,6 +13,11 @@ export default async function AdminLayout({
     redirect("/login");
   }
 
+  const role = (session.user as { role?: string } | undefined)?.role;
+  if (role !== "ADMIN") {
+    redirect("/login");
+  }
+
   return (
     <div className="min-h-screen bg-brand-bg">
       <AdminShell>{children}</AdminShell>

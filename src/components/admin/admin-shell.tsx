@@ -25,6 +25,7 @@ const nav = [
   { href: "/admin/creators", label: "صناع المحتوى", icon: Users },
   { href: "/admin/categories", label: "التصنيفات", icon: Layers },
   { href: "/admin/applications", label: "طلبات الانضمام", icon: Inbox },
+  { href: "/admin/users", label: "المستخدمون", icon: Users },
   { href: "/admin/analytics", label: "التحليلات", icon: BarChart3 },
   { href: "/admin/activity", label: "سجل النشاط", icon: History },
   { href: "/admin/settings", label: "الإعدادات", icon: Settings },

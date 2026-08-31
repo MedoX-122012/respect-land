@@ -71,6 +71,11 @@ export function CreatorsManager({
     if (q) params.set("q", q);
     try {
       const res = await fetch(`/api/admin/creators?${params}`);
+      if (!res.ok) {
+        toast("حدث خطأ أثناء التحميل", "error");
+        setData({ creators: [], total: 0, page: 1, pageSize: 10 });
+        return;
+      }
       const json = await res.json();
       setData(json);
     } catch {
@@ -139,13 +144,17 @@ export function CreatorsManager({
     field: "verified" | "featured",
     value: boolean
   ) => {
-    await fetch(`/api/admin/creators/${id}`, {
+    const res = await fetch(`/api/admin/creators/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ [field]: value }),
     });
-    toast(field === "verified" ? "تم تحديث التوثيق" : "تم تحديث المميز");
-    load();
+    if (res.ok) {
+      toast(field === "verified" ? "تم تحديث التوثيق" : "تم تحديث المميز");
+      load();
+    } else {
+      toast("حدث خطأ", "error");
+    }
   };
 
   const totalPages = data ? Math.ceil(data.total / data.pageSize) : 1;

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { LogoMark } from "@/components/logo";
 import { AdminLoginForm } from "@/components/admin-login-form";
 
@@ -24,12 +23,6 @@ export default function LoginPage() {
           </p>
         </div>
         <AdminLoginForm />
-        <p className="mt-6 text-center text-sm text-brand-muted">
-          ليس لديك حساب؟{" "}
-          <Link href="/register" className="font-medium text-brand-green hover:text-brand-lime">
-            أنشئ حسابًا
-          </Link>
-        </p>
       </div>
     </div>
   );

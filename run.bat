@@ -45,14 +45,12 @@ if not exist "node_modules" (
     if errorlevel 1 goto :fail
 )
 
-if not exist "prisma\dev.db" (
-    echo  [2/3] Preparing the database...
-    call npx prisma db push
-    if errorlevel 1 goto :fail
-    echo  [2/3] Seeding demo data...
-    call npm run db:seed
-    if errorlevel 1 goto :fail
-)
+echo  [2/3] Syncing database with Neon...
+call npx prisma db push
+if errorlevel 1 goto :fail
+echo  [2/3] Seeding data if needed...
+call npm run db:seed
+if errorlevel 1 goto :fail
 
 echo  [3/3] Starting the site...
 echo.

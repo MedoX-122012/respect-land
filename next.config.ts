@@ -11,9 +11,6 @@ const nextConfig: NextConfig = {
     dangerouslyAllowSVG: true,
     contentDispositionType: "inline",
   },
-  outputFileTracingIncludes: {
-    "/*": ["./prisma/dev.db"],
-  },
   experimental: {
     serverActions: {
       bodySizeLimit: "2mb",

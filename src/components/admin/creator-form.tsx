@@ -118,10 +118,13 @@ export function CreatorForm({
     checked: boolean;
     onChange: (v: boolean) => void;
   }) => (
-    <label className="flex cursor-pointer items-center justify-between rounded-xl border border-brand-border bg-brand-bg/40 px-4 py-3">
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className="flex w-full cursor-pointer items-center justify-between rounded-xl border border-brand-border bg-brand-bg/40 px-4 py-3"
+    >
       <span className="text-sm text-brand-text">{label}</span>
       <span
-        onClick={() => onChange(!checked)}
         className={
           checked
             ? "flex size-6 items-center justify-center rounded-md bg-brand-green text-brand-bg"
@@ -130,7 +133,7 @@ export function CreatorForm({
       >
         <Check className="size-4" />
       </span>
-    </label>
+    </button>
   );
 
   return (
@@ -237,17 +240,17 @@ export function CreatorForm({
             <Input
               type="number"
               value={form.followerCount}
-              onChange={(e) => set("followerCount", e.target.value)}
+              onChange={(e) => set("followerCount", e.target.value === "" ? 0 : Number(e.target.value))}
             />
           </Field>
           <Field label="عدد المشاهدات">
-            <Input type="number" value={form.views} onChange={(e) => set("views", e.target.value)} />
+            <Input type="number" value={form.views} onChange={(e) => set("views", e.target.value === "" ? 0 : Number(e.target.value))} />
           </Field>
           <Field label="درجة التأثير">
             <Input
               type="number"
               value={form.adminScore}
-              onChange={(e) => set("adminScore", e.target.value)}
+              onChange={(e) => set("adminScore", e.target.value === "" ? 0 : Number(e.target.value))}
             />
           </Field>
         </div>

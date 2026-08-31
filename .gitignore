@@ -30,6 +30,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# sqlite (legacy, now using Neon Postgres)
+prisma/dev.db
+prisma/dev.db-journal
+*.db
+
 # env files (can opt-in for committing if needed)
 .env*
 
