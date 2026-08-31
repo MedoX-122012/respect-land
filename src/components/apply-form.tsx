@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2, CheckCircle2, Upload, X, Link2 } from "lucide-react";
 import { Input, Textarea, Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { PLATFORM_KEYS, PLATFORMS } from "@/components/platform-icon";
@@ -19,6 +19,7 @@ export function ApplyForm({ categories }: { categories: { slug: string; name: st
   const [done, setDone] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [platforms, setPlatforms] = useState<PlatformRow[]>([]);
+  const [uploading, setUploading] = useState<"image" | "cover" | null>(null);
   const [form, setForm] = useState({
     name: "",
     username: "",
@@ -28,6 +29,35 @@ export function ApplyForm({ categories }: { categories: { slug: string; name: st
     cover: "",
     reason: "",
   });
+
+  const handleUpload = async (file: File, field: "image" | "cover") => {
+    if (!file.type.startsWith("image/")) {
+      toast("اختر ملف صورة فقط", "error");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast("حجم الصورة كبير (الحد 5MB)", "error");
+      return;
+    }
+    setUploading(field);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("type", field);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.error ?? "فشل الرفع", "error");
+        return;
+      }
+      setForm((p) => ({ ...p, [field]: data.url }));
+      toast("تم رفع الصورة بنجاح");
+    } catch {
+      toast("فشل رفع الصورة", "error");
+    } finally {
+      setUploading(null);
+    }
+  };
 
   const togglePlatform = (key: string) => {
     setPlatforms((prev) =>
@@ -183,21 +213,85 @@ export function ApplyForm({ categories }: { categories: { slug: string; name: st
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="صورة الملف الشخصي" hint="رابط صورة">
-          <Input
-            value={form.image}
-            onChange={(e) => setForm({ ...form, image: e.target.value })}
-            placeholder="https://"
-            dir="ltr"
-          />
+        <Field label="صورة الملف الشخصي">
+          <div className="space-y-2">
+            <div
+              className="group relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-brand-border bg-brand-bg/40 p-4 transition-colors hover:border-brand-green/40"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const f = e.dataTransfer.files?.[0];
+                if (f) handleUpload(f, "image");
+              }}
+            >
+              {form.image ? (
+                <div className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={form.image} alt="preview" className="size-20 rounded-2xl border-2 border-brand-border object-cover" />
+                  <button type="button" onClick={() => setForm((p) => ({ ...p, image: "" }))} className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600">
+                    <X className="size-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 py-1 text-center">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-brand-surface text-brand-muted">
+                    <Upload className="size-5" />
+                  </div>
+                  <span className="text-xs text-brand-muted">اسحب الصورة هنا</span>
+                </div>
+              )}
+              <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-brand-border bg-brand-surface px-3 py-1.5 text-xs font-medium text-brand-text hover:border-brand-green/40">
+                <Upload className="size-3.5" />
+                {uploading === "image" ? "جارٍ الرفع..." : "اختر صورة"}
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f, "image"); e.target.value = ""; }} disabled={uploading === "image"} />
+              </label>
+              {uploading === "image" && <Loader2 className="mt-2 size-4 animate-spin text-brand-green" />}
+            </div>
+            <div className="flex items-center gap-2">
+              <Link2 className="size-3.5 shrink-0 text-brand-muted" />
+              <Input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} dir="ltr" placeholder="أو رابط https://..." />
+            </div>
+          </div>
         </Field>
-        <Field label="صورة الغلاف (اختياري)" hint="رابط صورة">
-          <Input
-            value={form.cover}
-            onChange={(e) => setForm({ ...form, cover: e.target.value })}
-            placeholder="https://"
-            dir="ltr"
-          />
+        <Field label="صورة الغلاف (اختياري)">
+          <div className="space-y-2">
+            <div
+              className="group relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-brand-border bg-brand-bg/40 p-4 transition-colors hover:border-brand-green/40"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const f = e.dataTransfer.files?.[0];
+                if (f) handleUpload(f, "cover");
+              }}
+            >
+              {form.cover ? (
+                <div className="relative w-full">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={form.cover} alt="cover preview" className="h-20 w-full rounded-xl border border-brand-border object-cover" />
+                  <button type="button" onClick={() => setForm((p) => ({ ...p, cover: "" }))} className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur hover:bg-red-500">
+                    <X className="size-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 py-1 text-center">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-brand-surface text-brand-muted">
+                    <Upload className="size-5" />
+                  </div>
+                  <span className="text-xs text-brand-muted">اسحب صورة الغلاف</span>
+                </div>
+              )}
+              <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-brand-border bg-brand-surface px-3 py-1.5 text-xs font-medium text-brand-text hover:border-brand-green/40">
+                <Upload className="size-3.5" />
+                {uploading === "cover" ? "جارٍ الرفع..." : "اختر صورة الغلاف"}
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f, "cover"); e.target.value = ""; }} disabled={uploading === "cover"} />
+              </label>
+              {uploading === "cover" && <Loader2 className="mt-2 size-4 animate-spin text-brand-green" />}
+            </div>
+            <div className="flex items-center gap-2">
+              <Link2 className="size-3.5 shrink-0 text-brand-muted" />
+              <Input value={form.cover} onChange={(e) => setForm({ ...form, cover: e.target.value })} dir="ltr" placeholder="أو رابط https://..." />
+            </div>
+          </div>
         </Field>
       </div>
 
