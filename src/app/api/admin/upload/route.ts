@@ -27,12 +27,24 @@ export async function POST(req: NextRequest) {
   const ext = file.name.split(".").pop()?.toLowerCase() || (file.type === "image/jpeg" ? "jpg" : "png");
   const fileName = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
-  const uploadDir = path.join(process.cwd(), "public", "uploads");
-  if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
-
   const buffer = Buffer.from(await file.arrayBuffer());
-  const filePath = path.join(uploadDir, fileName);
-  await writeFile(filePath, buffer);
 
-  return NextResponse.json({ url: `/uploads/${fileName}` });
+  if (process.env.VERCEL === "1") {
+    const base64 = buffer.toString("base64");
+    const dataUrl = `data:${file.type};base64,${base64}`;
+    return NextResponse.json({ url: dataUrl });
+  }
+
+  try {
+    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
+    const filePath = path.join(uploadDir, fileName);
+    await writeFile(filePath, buffer);
+    return NextResponse.json({ url: `/uploads/${fileName}` });
+  } catch (e) {
+    console.warn("[upload] local write failed, falling back to data URL", e);
+    const base64 = buffer.toString("base64");
+    const dataUrl = `data:${file.type};base64,${base64}`;
+    return NextResponse.json({ url: dataUrl });
+  }
 }
