@@ -17,8 +17,10 @@ const updateSchema = z.object({
   bio: z.string().nullable().optional(),
   categoryId: z.string().nullable().optional(),
   platforms: z.array(z.any()).optional(),
+  platformStats: z.any().optional().nullable(),
   followerCount: z.coerce.number().int().min(0).optional(),
   views: z.coerce.number().int().min(0).optional(),
+  totalLikes: z.coerce.number().int().min(0).optional(),
   featured: z.boolean().optional(),
   verified: z.boolean().optional(),
   isNew: z.boolean().optional(),
@@ -54,12 +56,15 @@ export async function PUT(
     }
   }
 
+  const updateData: Record<string, unknown> = { ...data };
+  if (data.platforms) updateData.platforms = data.platforms as unknown as never;
+  if (data.platformStats !== undefined) {
+    updateData.platformStats = data.platformStats as unknown as never;
+    updateData.lastScrapedAt = new Date();
+  }
   const creator = await prisma.creator.update({
     where: { id },
-    data: {
-      ...data,
-      platforms: data.platforms as unknown as never,
-    },
+    data: updateData as never,
     include: { category: true },
   });
 

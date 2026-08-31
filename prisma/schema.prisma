@@ -78,6 +78,10 @@ model Creator {
   platforms     Json?
   followerCount Int              @default(0)
   views         Int              @default(0)
+  totalLikes    Int              @default(0)
+  lastScrapedAt DateTime?
+  scrapeError   String?
+  platformStats Json?
   featured      Boolean          @default(false)
   featuredOrder Int              @default(0)
   verified      Boolean          @default(false)
@@ -88,6 +92,31 @@ model Creator {
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
   events        AnalyticsEvent[]
+  videos        Video[]
+}
+
+model Video {
+  id          String   @id @default(cuid())
+  creatorId   String
+  creator     Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  platform    String
+  externalId  String
+  title       String?
+  thumbnail   String?
+  url         String
+  views       Int      @default(0)
+  likes       Int      @default(0)
+  comments    Int      @default(0)
+  publishedAt DateTime?
+  isLatest    Boolean  @default(false)
+  isTopViewed Boolean  @default(false)
+  isTopLiked  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([platform, externalId])
+  @@index([creatorId, views])
+  @@index([creatorId, likes])
 }
 
 model Application {

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, ArrowRight } from "lucide-react";
+import { Check, Loader2, ArrowRight, RefreshCw, Video, Eye, Heart } from "lucide-react";
 import { Input, Textarea, Field } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,32 @@ interface PlatformRow {
   key: string;
   handle: string;
   url: string;
+}
+
+interface VideoPreview {
+  externalId: string;
+  title?: string;
+  thumbnail?: string;
+  url: string;
+  views?: number;
+  likes?: number;
+  publishedAt?: string;
+  platform: string;
+}
+
+interface ScrapeResult {
+  platform: string;
+  handle?: string;
+  avatar?: string;
+  bio?: string;
+  followerCount?: number;
+  views?: number;
+  totalLikes?: number;
+  latestVideo?: VideoPreview;
+  topViewed?: VideoPreview;
+  topLiked?: VideoPreview;
+  videos?: VideoPreview[];
+  error?: string;
 }
 
 export function CreatorForm({
@@ -34,6 +60,9 @@ export function CreatorForm({
       ? (initial.platforms as unknown as PlatformRow[])
       : []
   );
+  const [scrapeResults, setScrapeResults] = useState<Record<string, ScrapeResult>>({});
+  const [scraping, setScraping] = useState<string | null>(null);
+
   const [form, setForm] = useState({
     name: initial?.name ?? "",
     username: initial?.username ?? "",
@@ -43,6 +72,7 @@ export function CreatorForm({
     categoryId: initial?.categoryId ?? "",
     followerCount: initial?.followerCount ?? 0,
     views: initial?.views ?? 0,
+    totalLikes: (initial as unknown as { totalLikes?: number })?.totalLikes ?? 0,
     adminScore: initial?.adminScore ?? 0,
     featured: initial?.featured ?? false,
     verified: initial?.verified ?? false,
@@ -75,6 +105,38 @@ export function CreatorForm({
         : [...prev, { key, handle: "", url: "" }]
     );
 
+  const handleScrape = async (pKey: string, url: string) => {
+    if (!url.trim()) {
+      toast("الصق رابط القناة أولاً", "error");
+      return;
+    }
+    setScraping(pKey);
+    try {
+      const res = await fetch("/api/admin/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform: pKey, url }),
+      });
+      const data: ScrapeResult = await res.json();
+      if (!res.ok || data.error) {
+        toast(data.error ?? "فشل الجلب", "error");
+        setScrapeResults((prev) => ({ ...prev, [pKey]: data }));
+        return;
+      }
+      setScrapeResults((prev) => ({ ...prev, [pKey]: data }));
+      if (data.avatar && !form.avatar) set("avatar", data.avatar);
+      if (data.bio && !form.bio) set("bio", data.bio.slice(0, 300));
+      if (typeof data.followerCount === "number") set("followerCount", data.followerCount);
+      if (typeof data.views === "number") set("views", data.views);
+      if (typeof data.totalLikes === "number") set("totalLikes", data.totalLikes);
+      toast(`تم جلب بيانات ${PLATFORMS[pKey as keyof typeof PLATFORMS]?.label ?? pKey} بنجاح`);
+    } catch {
+      toast("فشل الاتصال بخادم الجلب", "error");
+    } finally {
+      setScraping(null);
+    }
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -82,20 +144,44 @@ export function CreatorForm({
     const url = isEdit ? `/api/admin/creators/${initial!.id}` : "/api/admin/creators";
     const method = isEdit ? "PUT" : "POST";
     try {
+      const platformStats: Record<string, unknown> = {};
+      Object.entries(scrapeResults).forEach(([k, v]) => {
+        if (!v.error) platformStats[k] = v;
+      });
+      const payload: Record<string, unknown> = {
+        ...form,
+        categoryId: form.categoryId || null,
+        platforms,
+        platformStats: Object.keys(platformStats).length ? platformStats : undefined,
+        totalLikes: form.totalLikes,
+      };
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          categoryId: form.categoryId || null,
-          platforms,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
         setErrors(data.error ?? {});
         toast("تحقق من الحقول", "error");
         return;
+      }
+      const createdId = data.creator?.id ?? initial?.id;
+      if (createdId && Object.keys(platformStats).length) {
+        for (const [pKey, v] of Object.entries(platformStats) as Array<[string, ScrapeResult]>) {
+          const vids = v.videos ?? [];
+          const toSave: VideoPreview[] = [];
+          if (v.latestVideo) toSave.push({ ...v.latestVideo, isLatest: true } as unknown as VideoPreview);
+          if (v.topViewed && v.topViewed.externalId !== v.latestVideo?.externalId) toSave.push({ ...v.topViewed, isTopViewed: true } as unknown as VideoPreview);
+          if (v.topLiked && v.topLiked.externalId !== v.latestVideo?.externalId && v.topLiked.externalId !== v.topViewed?.externalId) toSave.push({ ...v.topLiked, isTopLiked: true } as unknown as VideoPreview);
+          for (const vid of toSave.slice(0, 3)) {
+            await fetch(`/api/admin/creators/${createdId}/videos`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ...vid, platform: pKey }),
+            }).catch(() => {});
+          }
+        }
       }
       toast(isEdit ? "تم تحديث البيانات بنجاح" : "تمت إضافة صانع المحتوى بنجاح");
       router.push("/admin/creators");
@@ -135,6 +221,13 @@ export function CreatorForm({
       </span>
     </button>
   );
+
+  const scrapedVideos: Array<VideoPreview & { platform: string }> = [];
+  Object.entries(scrapeResults).forEach(([pKey, r]) => {
+    if (r.latestVideo) scrapedVideos.push({ ...r.latestVideo, platform: pKey });
+    if (r.topViewed && r.topViewed.externalId !== r.latestVideo?.externalId) scrapedVideos.push({ ...r.topViewed, platform: pKey });
+    if (r.topLiked && r.topLiked.externalId !== r.latestVideo?.externalId && r.topLiked.externalId !== r.topViewed?.externalId) scrapedVideos.push({ ...r.topLiked, platform: pKey });
+  });
 
   return (
     <form onSubmit={submit} className="grid gap-8 lg:grid-cols-[1fr_340px]">
@@ -179,7 +272,7 @@ export function CreatorForm({
         </Field>
 
         <div>
-          <span className="mb-2 block text-sm font-medium text-brand-text">المنصات</span>
+          <span className="mb-2 block text-sm font-medium text-brand-text">المنصات — الصق الرابط واضغط مزامنة</span>
           <div className="flex flex-wrap gap-2">
             {PLATFORM_KEYS.map((key) => {
               const active = platforms.some((p) => p.key === key);
@@ -200,40 +293,105 @@ export function CreatorForm({
             })}
           </div>
           {platforms.length > 0 && (
-            <div className="mt-3 space-y-2">
-              {platforms.map((p) => (
-                <div key={p.key} className="rounded-xl border border-brand-border bg-brand-bg/40 p-3">
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <Input
-                      value={p.handle}
-                      onChange={(e) =>
-                        setPlatforms((prev) =>
-                          prev.map((x) =>
-                            x.key === p.key ? { ...x, handle: e.target.value } : x
+            <div className="mt-3 space-y-3">
+              {platforms.map((p) => {
+                const r = scrapeResults[p.key];
+                const isScraping = scraping === p.key;
+                return (
+                  <div key={p.key} className="rounded-xl border border-brand-border bg-brand-bg/40 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-sm font-medium text-brand-text">{PLATFORMS[p.key as keyof typeof PLATFORMS].label}</span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleScrape(p.key, p.url)}
+                        disabled={isScraping || !p.url.trim()}
+                        isLoading={isScraping}
+                      >
+                        {!isScraping && <RefreshCw className="size-4" />}
+                        {isScraping ? "جارٍ الجلب..." : "مزامنة"}
+                      </Button>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Input
+                        value={p.handle}
+                        onChange={(e) =>
+                          setPlatforms((prev) =>
+                            prev.map((x) =>
+                              x.key === p.key ? { ...x, handle: e.target.value } : x
+                            )
                           )
-                        )
-                      }
-                      placeholder={`${PLATFORMS[p.key as keyof typeof PLATFORMS].label} handle`}
-                      dir="ltr"
-                    />
-                    <Input
-                      value={p.url}
-                      onChange={(e) =>
-                        setPlatforms((prev) =>
-                          prev.map((x) =>
-                            x.key === p.key ? { ...x, url: e.target.value } : x
+                        }
+                        placeholder={`${PLATFORMS[p.key as keyof typeof PLATFORMS].label} handle`}
+                        dir="ltr"
+                      />
+                      <Input
+                        value={p.url}
+                        onChange={(e) =>
+                          setPlatforms((prev) =>
+                            prev.map((x) =>
+                              x.key === p.key ? { ...x, url: e.target.value } : x
+                            )
                           )
-                        )
-                      }
-                      placeholder="https://"
-                      dir="ltr"
-                    />
+                        }
+                        placeholder="https://"
+                        dir="ltr"
+                      />
+                    </div>
+                    {r && (
+                      <div className="mt-2 rounded-lg border border-brand-border bg-brand-surface/50 p-2.5 text-xs">
+                        {r.error ? (
+                          <span className="text-red-400">{r.error}</span>
+                        ) : (
+                          <div className="space-y-1 text-brand-muted">
+                            {typeof r.followerCount === "number" && <div>متابعون: <b className="text-brand-text">{r.followerCount.toLocaleString("ar-EG")}</b></div>}
+                            {typeof r.views === "number" && <div>مشاهدات: <b className="text-brand-text">{r.views.toLocaleString("ar-EG")}</b></div>}
+                            {r.latestVideo && <div className="flex items-center gap-1.5"><Video className="size-3 text-brand-green" /> آخر فيديو: <a href={r.latestVideo.url} target="_blank" rel="noreferrer" className="truncate text-brand-green hover:underline">{r.latestVideo.title ?? r.latestVideo.url}</a></div>}
+                            {r.topViewed && <div className="flex items-center gap-1.5"><Eye className="size-3 text-brand-lime" /> الأعلى مشاهدة: <a href={r.topViewed.url} target="_blank" rel="noreferrer" className="truncate text-brand-green hover:underline">{r.topViewed.title ?? r.topViewed.url}</a> ({r.topViewed.views?.toLocaleString("ar-EG")} مشاهدة)</div>}
+                            {r.topLiked && <div className="flex items-center gap-1.5"><Heart className="size-3 text-red-400" /> الأعلى إعجابًا: <a href={r.topLiked.url} target="_blank" rel="noreferrer" className="truncate text-brand-green hover:underline">{r.topLiked.title ?? r.topLiked.url}</a> ({r.topLiked.likes?.toLocaleString("ar-EG")} إعجاب)</div>}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
+
+        {scrapedVideos.length > 0 && (
+          <div className="rounded-2xl border border-brand-green/20 bg-brand-green/5 p-4">
+            <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-brand-text">
+              <Video className="size-4 text-brand-green" />
+              معاينة الفيديوهات المجلوبة ({scrapedVideos.length})
+            </h4>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {scrapedVideos.slice(0, 6).map((v) => (
+                <a key={`${v.platform}-${v.externalId}`} href={v.url} target="_blank" rel="noreferrer" className="group overflow-hidden rounded-xl border border-brand-border bg-brand-surface transition-colors hover:border-brand-green/30">
+                  <div className="relative aspect-video overflow-hidden bg-brand-dark">
+                    {v.thumbnail ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={v.thumbnail} alt={v.title ?? ""} className="size-full object-cover transition-transform group-hover:scale-105" />
+                    ) : (
+                      <div className="flex size-full items-center justify-center text-brand-muted"><Video className="size-8" /></div>
+                    )}
+                    <span className="absolute bottom-1.5 right-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">{PLATFORMS[v.platform as keyof typeof PLATFORMS]?.label ?? v.platform}</span>
+                  </div>
+                  <div className="p-2.5">
+                    <p className="line-clamp-2 text-xs font-medium text-brand-text group-hover:text-brand-lime">{v.title ?? "بدون عنوان"}</p>
+                    <p className="mt-1 flex items-center gap-3 text-[11px] text-brand-muted">
+                      {typeof v.views === "number" && <span className="flex items-center gap-1"><Eye className="size-3" />{v.views.toLocaleString("ar-EG")}</span>}
+                      {typeof v.likes === "number" && <span className="flex items-center gap-1"><Heart className="size-3" />{v.likes.toLocaleString("ar-EG")}</span>}
+                    </p>
+                  </div>
+                </a>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-brand-muted">سيتم حفظ هذه الفيديوهات وستظهر في صفحة صانع المحتوى</p>
+          </div>
+        )}
 
         <div className="grid gap-5 sm:grid-cols-3">
           <Field label="عدد المتابعين">
@@ -246,6 +404,11 @@ export function CreatorForm({
           <Field label="عدد المشاهدات">
             <Input type="number" value={form.views} onChange={(e) => set("views", e.target.value === "" ? 0 : Number(e.target.value))} />
           </Field>
+          <Field label="عدد الإعجابات">
+            <Input type="number" value={form.totalLikes} onChange={(e) => set("totalLikes", e.target.value === "" ? 0 : Number(e.target.value))} />
+          </Field>
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2">
           <Field label="درجة التأثير">
             <Input
               type="number"
@@ -253,6 +416,9 @@ export function CreatorForm({
               onChange={(e) => set("adminScore", e.target.value === "" ? 0 : Number(e.target.value))}
             />
           </Field>
+          <div className="flex items-end text-xs text-brand-muted">
+            {Object.keys(scrapeResults).length > 0 && <span>آخر مزامنة: {new Date().toLocaleString("ar-EG")}</span>}
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
